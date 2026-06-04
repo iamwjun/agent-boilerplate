@@ -1,0 +1,7 @@
+fastapi==0.110.0
+uvicorn==0.28.0
+elasticsearch==8.12.1
+sentence-transformers==2.5.1
+torch==2.2.1 --index-url https://download.pytorch.org/whl/cpu  # 生产环境建议用 CUDA 版本
+pydantic==2.6.4
+numpy==1.26.4
