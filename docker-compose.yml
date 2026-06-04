@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # 1. 向量与文本数据库: Elasticsearch 8.x
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: es-node
+    environment:
+      - node.name=es-node
+      - discovery.type=single-node
+      - xpack.security.enabled=false # 实验环境建议关闭，生产环境必须开启
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - agent-network
+
+  # 2. 会话上下文存储: Redis
+  redis:
+    image: redis:7.0-alpine
+    container_name: redis-memory
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - agent-network
+
+  # 3. RAG 检索与重排服务 (GPU 密集型模拟)
+  rag-search-service:
+    build:
+      context: .
+      dockerfile: services/rag-search-service/Dockerfile
+    container_name: rag-search-service
+    environment:
+      - ES_HOST=http://elasticsearch:9200
+      - RERANK_MODEL_PATH=/app/models/bge-reranker-large
+    depends_on:
+      - elasticsearch
+    networks:
+      - agent-network
+
+  # 4. Agent 核心智能编排服务 (LangChain 引擎)
+  agent-core-service:
+    build:
+      context: .
+      dockerfile: services/agent-core-service/Dockerfile
+    container_name: agent-core-service
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - RAG_SERVICE_URL=http://rag-search-service:8000
+      - OPENAI_API_KEY=${OPENAI_API_KEY} # 从本地 .env 文件读取
+      - OPENAI_API_BASE=${OPENAI_API_BASE}
+    depends_on:
+      - redis
+      - rag-search-service
+    ports:
+      - "8000:8000" # 对外暴露 API 接口
+    networks:
+      - agent-network
+
+  # 5. 前端展示层 (React/Vue)
+  agent-web-ui:
+    build:
+      context: ./web
+    container_name: agent-web-ui
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - agent-core-service
+    networks:
+      - agent-network
+
+# ======================== 网络与存储定义 ========================
+networks:
+  agent-network:
+    driver: bridge
+
+volumes:
+  es_data:
+    driver: local
+  redis_data:
+    driver: local
