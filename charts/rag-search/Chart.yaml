@@ -1,0 +1,6 @@
+apiVersion: v2
+name: rag-search-service
+description: High Performance RAG Search & Rerank Service with GPU Support
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

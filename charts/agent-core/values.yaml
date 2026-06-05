@@ -1,0 +1,50 @@
+replicaCount: 2 # 生产环境默认 2 副本实现高可用
+
+image:
+  repository: registry.yourcompany.com/agent/agent-core-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+# 动态注入生产环境变量（可对接企业配置中心如 Apollo / Nacos）
+env:
+  - name: REDIS_URL
+    value: "redis://redis-cluster.infra.svc.cluster.local:6379/0"
+  - name: RAG_SERVICE_URL
+    value: "http://rag-search-service.agent.svc.cluster.local:8010"
+  - name: OPENAI_API_BASE
+    value: "https://api.yourcompany-ai.com/v1"
+
+# 大厂生产必配：资源限额（防止大模型长文本处理导致 Pod 内存泄露 OOM 影响宿主机）
+resources:
+  limits:
+    cpu: "2"
+    memory: 4Gi
+  requests:
+    cpu: "1"
+    memory: 2Gi
+
+# K8s 自愈探针：配合 FastAPI 的 /health 接口
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+# 弹性伸缩策略：当 CPU 利用率超过 70% 时自动扩容（最多 10 个副本）
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70

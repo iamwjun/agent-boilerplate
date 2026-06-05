@@ -1,0 +1,6 @@
+apiVersion: v2
+name: agent-core-service
+description: Enterprise Agent Core Service Helm Chart
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

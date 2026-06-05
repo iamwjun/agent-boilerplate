@@ -1,0 +1,29 @@
+replicaCount: 2
+
+image:
+  repository: registry.yourcompany.com/agent/rag-search-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8010
+
+env:
+  - name: ES_HOST
+    value: "http://elasticsearch-master.infra.svc.cluster.local:9200"
+
+# 关键配置：企业生产级 NVIDIA GPU 算力调度限额
+resources:
+  limits:
+    cpu: "4"
+    memory: 8Gi
+    nvidia.com/gpu: "1" # 申请 1 块 GPU 显卡（支持硬隔离或 VGPU 切片）
+  requests:
+    cpu: "2"
+    memory: 4Gi
+    nvidia.com/gpu: "1"
+
+# 节点亲和性：强制将该 Pod 调度到贴有 "gpu=true" 标签的裸金属显卡服务器上
+nodeSelector:
+  hardware-type: gpu-node
