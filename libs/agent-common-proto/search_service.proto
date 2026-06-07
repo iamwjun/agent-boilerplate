@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package agent.common.v1;
+
+// 定义 RAG 检索与重排服务
+service RAGSearchService {
+  // 混合检索并精排接口
+  rpc HybridSearch (SearchRequest) returns (SearchResponse);
+}
+
+// 检索请求
+message SearchRequest {
+  string query = 1;
+  int32 top_k = 2;
+  int32 rerank_top_n = 3;
+  string tenant_id = 4;        // 强制带入租户ID以实现多租户隔离
+  string security_level = 5;   // 用户安全访问等级
+}
+
+// 检索响应
+message SearchResponse {
+  repeated string results = 1; // 精排后的参考文本片段列表
+  int32 status_code = 2;
+  string message = 3;
+}
